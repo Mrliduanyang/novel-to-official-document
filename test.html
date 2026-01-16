@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>分页逻辑测试</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: #f5f5f5;
+            padding: 20px;
+            font-family: "FangSong_GB2312", "仿宋_GB2312", "FangSong", "仿宋", serif;
+        }
+
+        .controls {
+            max-width: 800px;
+            margin: 0 auto 20px;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .controls h2 {
+            margin-bottom: 15px;
+            color: #c8161d;
+        }
+
+        .controls button {
+            padding: 10px 20px;
+            background-color: #c8161d;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-right: 10px;
+        }
+
+        .controls button:hover {
+            background-color: #a01318;
+        }
+
+        .stats {
+            margin-top: 15px;
+            padding: 10px;
+            background: #f0f0f0;
+            border-radius: 4px;
+        }
+
+        .document-container {
+            max-width: 210mm;
+            margin: 0 auto;
+        }
+
+        .page {
+            width: 210mm;
+            height: 297mm;
+            margin: 0 auto 20px;
+            background: white;
+            padding: 37mm 26mm 35mm 28mm;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            position: relative;
+            page-break-after: always;
+            box-sizing: border-box;
+            overflow: hidden;
+        }
+
+        .page:last-child {
+            page-break-after: auto;
+        }
+
+        /* 红头部分 */
+        .header {
+            text-align: center;
+            margin-bottom: 20mm;
+        }
+
+        .header-title {
+            font-size: 22pt;
+            font-weight: bold;
+            color: #c8161d;
+            letter-spacing: 2px;
+            margin-bottom: 3mm;
+            font-family: "SimHei", "黑体", sans-serif;
+        }
+
+        .header-line {
+            width: 100%;
+            height: 0.5mm;
+            background-color: #c8161d;
+            margin: 5mm 0;
+        }
+
+        /* 文号 */
+        .document-number {
+            text-align: center;
+            font-size: 16pt;
+            margin-bottom: 8mm;
+            font-family: "FangSong_GB2312", "仿宋_GB2312", "FangSong", "仿宋", serif;
+        }
+
+        /* 标题 */
+        .title {
+            text-align: center;
+            font-size: 22pt;
+            font-weight: bold;
+            margin-bottom: 10mm;
+            line-height: 1.5;
+            font-family: "SimHei", "黑体", sans-serif;
+        }
+
+        /* 正文 */
+        .content {
+            font-size: 16pt;
+            line-height: 2;
+            text-align: justify;
+            font-family: "FangSong_GB2312", "仿宋_GB2312", "FangSong", "仿宋", serif;
+        }
+
+        .content p {
+            margin-bottom: 1em;
+            text-indent: 2em;
+        }
+
+        /* 落款 */
+        .signature {
+            text-align: right;
+            font-size: 16pt;
+            margin-top: 10mm;
+            font-family: "FangSong_GB2312", "仿宋_GB2312", "FangSong", "仿宋", serif;
+        }
+
+        .signature-unit {
+            margin-bottom: 8mm;
+        }
+
+        .signature-date {
+            margin-right: 20mm;
+        }
+
+        /* 页码 */
+        .page-number {
+            position: absolute;
+            bottom: 15mm;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 14pt;
+            font-family: "FangSong_GB2312", "仿宋_GB2312", "FangSong", "仿宋", serif;
+        }
+
+        /* 高度标尺 - 用于可视化调试 */
+        .page.with-ruler::before {
+            content: '';
+            position: absolute;
+            left: 5mm;
+            top: 40mm;
+            bottom: 30mm;
+            width: 2px;
+            background: repeating-linear-gradient(
+                to bottom,
+                red 0px,
+                red 2px,
+                transparent 2px,
+                transparent 10mm
+            );
+            opacity: 0.3;
+        }
+
+        .source-content {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="controls">
+        <h2>📏 分页逻辑测试</h2>
+        <button onclick="runTest()">🚀 运行测试</button>
+        <button onclick="toggleRuler()">📐 显示/隐藏标尺</button>
+        <button onclick="window.print()">🖨️ 打印预览</button>
+        <div class="stats" id="stats">
+            点击"运行测试"开始测试分页功能
+        </div>
+    </div>
+
+    <div id="result"></div>
+
+    <!-- 源内容 -->
+    <div class="source-content" id="sourceContent">
+        <h1>玄幻修仙传</h1>
+        <h3>第一章 天降异象</h3>
+        <div class="content">
+            <p>东玄大陆，青云山脉深处，一道璀璨的金光从天而降，照亮了整个夜空。</p>
+            <p>李云盘坐在山洞中，突然睁开双眼，眼中闪过一道精光。他感觉到体内的灵力正在疯狂运转，一股前所未有的力量正在觉醒。</p>
+            <p>"这是...天地异象？"李云心中震惊，立刻运转功法，引导这股突然出现的能量。</p>
+            <p>三年前，他意外穿越到这个修仙世界，成为青云宗的一名外门弟子。凭借前世的记忆和这个世界的修炼体系，他刻苦修炼，终于在今日迎来了突破的契机。</p>
+            <p>随着功法的运转，周围的天地灵气疯狂地涌入李云体内。他的修为以肉眼可见的速度提升着，从炼气期九层，直接冲破瓶颈，进入了筑基期！</p>
+            <p>筑基期，这是修仙者的第一个大境界。无数修士终其一生都无法跨越这道门槛，而李云仅用了三年时间就达到了这个境界。</p>
+            <p>"轰！"一声巨响，山洞外传来剧烈的震动。李云迅速收功，警惕地看向洞口。</p>
+            <p>只见一道黑影从天而降，重重地砸在山洞前的空地上。那是一个身穿黑袍的中年男子，此刻正气息奄奄，身上伤痕累累。</p>
+            <p>"咳咳...想不到我纵横一世，竟会落得如此下场。"黑袍男子惨笑一声，突然看向李云，"小子，有缘见到本座最后一面，是你的造化。"</p>
+            <p>李云谨慎地后退一步，运起刚刚突破的筑基期修为，随时准备应对突发情况。</p>
+            <p>黑袍男子摆了摆手，"放心，本座已是强弩之末，伤不了你。倒是你，刚刚突破筑基，根基却异常扎实，是个好苗子。"</p>
+            <p>说着，他伸手从怀中取出一枚古朴的玉简和一个储物袋，"这是本座一生所学和积蓄，今日便传给你了。记住，修道之路，逆天而行，切不可心存善念。"</p>
+            <p>话音刚落，黑袍男子身上的气息彻底消散，化作一道黑烟飘散而去，只留下那枚玉简和储物袋静静地躺在地上。</p>
+            <p>李云站在原地，久久没有动作。良久，他才缓缓走上前去，捡起了那两件东西。</p>
+            <p>神识探入玉简，一段段玄奥的信息涌入脑海。这竟然是一部地阶上品功法《血煞魔功》，以及配套的武技和炼丹、炼器之法。</p>
+            <p>再打开储物袋，里面琳琅满目的宝物让李云倒吸一口凉气。各种丹药、灵石、法器，数不胜数。这位前辈生前定然是一位了不得的强者。</p>
+            <p>"魔道功法么..."李云喃喃自语。在修仙界，正道与魔道泾渭分明，若是被人发现修炼魔功，必遭追杀。</p>
+            <p>但转念一想，如今他已突破筑基，正需要更高深的功法来巩固境界。而且，功法本身无正邪之分，关键在于修炼之人的心性。</p>
+            <p>做出决定后，李云盘膝坐下，开始研读这部《血煞魔功》。随着功法的运转，他惊讶地发现，这部魔功竟与自己的体质异常契合，修炼速度比之前快了数倍。</p>
+            <p>就在这时，远处传来破空之声。数道强大的气息正在快速接近，显然是冲着刚才的异象而来。</p>
+            <p>"不好，必须尽快离开这里。"李云迅速收拾好一切，施展轻功向山脉深处遁去。</p>
+            <p>他知道，从今日起，他的修仙之路将会充满荆棘和杀机。但他不惧，因为他有着穿越者的优势，有着系统的帮助，还有这意外获得的传承。</p>
+            <p>夜色中，李云的身影渐行渐远，很快消失在茫茫山林之中。而在他身后，那些追寻异象而来的修士们，注定一无所获。</p>
+            <p>青云山脉，只是东玄大陆的一隅。而李云的修仙之旅，才刚刚开始。</p>
+            <p>三日后，李云出现在距离青云山脉百里之外的坊市中。这里是修士们交易物品、接取任务的地方，鱼龙混杂，倒是个隐藏身份的好去处。</p>
+            <p>他换上一身普通的青色长袍，压低修为，混入人群之中。首先要做的，是将储物袋中的一些珍贵但容易惹人注目的东西处理掉，换成灵石和修炼资源。</p>
+            <p>坊市中人声鼎沸，各种叫卖声此起彼伏。李云漫步其间，一边观察周围的情况，一边思索着接下来的计划。</p>
+            <p>"这位道友，看您面生，是第一次来坊市吧？"一个声音突然在耳边响起。</p>
+            <p>李云转头，看到一个笑容可掬的年轻修士正看着自己。此人修为在炼气期七层左右，看起来并无恶意。</p>
+            <p>"正是，在下李云，初来乍到，还请道友多多指教。"李云抱拳回礼，不动声色地保持着距离。</p>
+        </div>
+    </div>
+
+    <script>
+        let showRuler = false;
+
+        // 动态计算内容高度并分页
+        function splitContentIntoPages(paragraphs) {
+            console.log('===== 开始分页计算 =====');
+            console.log(`总段落数: ${paragraphs.length}`);
+            
+            // 创建不可见的测量容器
+            const tempContainer = document.createElement('div');
+            tempContainer.style.cssText = `
+                position: absolute;
+                visibility: hidden;
+                width: 156mm;
+                font-size: 16pt;
+                line-height: 2;
+                font-family: "FangSong_GB2312", "仿宋_GB2312", "FangSong", "仿宋", serif;
+            `;
+            document.body.appendChild(tempContainer);
+            
+            // 定义页面高度限制（单位：mm）
+            const PAGE_HEIGHT_MM = 225;      // A4总可用高度 = 297 - 37(上) - 35(下)
+            const LAST_PAGE_HEIGHT_MM = 195; // 最后页 = 225 - 30(落款)
+            const MM_TO_PX = 3.7795275591;   // 1mm = 3.78px (96dpi)
+            
+            // 动态测量第一页的红头、文号、标题高度
+            const headerContainer = document.createElement('div');
+            headerContainer.style.cssText = `
+                position: absolute;
+                visibility: hidden;
+                width: 156mm;
+            `;
+            document.body.appendChild(headerContainer);
+            
+            // 红头部分
+            const header = document.createElement('div');
+            header.style.cssText = 'text-align: center; margin-bottom: 20mm;';
+            header.innerHTML = `
+                <div style="font-size: 22pt; font-weight: bold; color: #c8161d; letter-spacing: 2px; margin-bottom: 3mm; font-family: SimHei, 黑体, sans-serif;">XX省网络文学管理委员会</div>
+                <div style="width: 100%; height: 0.5mm; background-color: #c8161d; margin: 5mm 0;"></div>
+            `;
+            headerContainer.appendChild(header);
+            
+            // 文号
+            const docNumber = document.createElement('div');
+            docNumber.style.cssText = 'text-align: center; font-size: 16pt; margin-bottom: 8mm; font-family: "FangSong_GB2312", "仿宋_GB2312", "FangSong", "仿宋", serif;';
+            docNumber.textContent = 'X网文〔2026〕1号';
+            headerContainer.appendChild(docNumber);
+            
+            // 标题
+            const title = document.createElement('div');
+            title.style.cssText = 'text-align: center; font-size: 22pt; font-weight: bold; margin-bottom: 10mm; line-height: 1.5; font-family: SimHei, 黑体, sans-serif;';
+            title.textContent = '测试标题';
+            headerContainer.appendChild(title);
+            
+            const headerHeight = headerContainer.offsetHeight;
+            document.body.removeChild(headerContainer);
+            
+            const FIRST_PAGE_HEIGHT_MM = (PAGE_HEIGHT_MM * MM_TO_PX - headerHeight) / MM_TO_PX;
+            
+            console.log(`动态测量结果:`);
+            console.log(`  红头+文号+标题高度: ${headerHeight.toFixed(2)}px (${(headerHeight / MM_TO_PX).toFixed(2)}mm)`);
+            console.log(`  第一页可用高度: ${FIRST_PAGE_HEIGHT_MM.toFixed(2)}mm`);
+            console.log(`  普通页可用高度: ${PAGE_HEIGHT_MM}mm`);
+            console.log(`  最后页可用高度: ${LAST_PAGE_HEIGHT_MM}mm`);
+            
+            // 预先测量所有段落的高度（包括margin）
+            const paragraphHeights = paragraphs.map((para, index) => {
+                const p = document.createElement('p');
+                p.style.cssText = 'margin-bottom: 1em; text-indent: 2em; font-size: 16pt; line-height: 2;';
+                p.textContent = para;
+                tempContainer.appendChild(p);
+                
+                // offsetHeight不包含margin，需要手动计算
+                const height = p.offsetHeight;
+                const computedStyle = window.getComputedStyle(p);
+                const marginBottom = parseFloat(computedStyle.marginBottom);
+                
+                tempContainer.removeChild(p);
+                console.log(`段落${index + 1}: 内容=${height.toFixed(2)}px, 下边距=${marginBottom.toFixed(2)}px (${(height / MM_TO_PX).toFixed(2)}mm)`);
+                
+                // 返回内容高度和下边距，分开存储
+                return {
+                    contentHeight: height,
+                    marginBottom: marginBottom,
+                    totalHeight: height + marginBottom
+                };
+            });
+            
+            // 清理测量容器
+            document.body.removeChild(tempContainer);
+            
+            // 开始分页
+            const pages = [];
+            let currentPage = [];
+            let currentPageHeight = 0;
+            let pageIndex = 0;
+            
+            console.log('\n===== 开始分页 =====');
+            
+            for (let i = 0; i < paragraphs.length; i++) {
+                const para = paragraphs[i];
+                const paraInfo = paragraphHeights[i];
+                
+                // 计算当前页面的高度限制
+                let maxHeight;
+                
+                if (pageIndex === 0) {
+                    // 第一页
+                    maxHeight = FIRST_PAGE_HEIGHT_MM * MM_TO_PX;
+                } else {
+                    // 后续页（不提前限制，统一使用普通页高度）
+                    maxHeight = PAGE_HEIGHT_MM * MM_TO_PX;
+                }
+                
+                console.log(`\n处理段落${i + 1}: 内容=${paraInfo.contentHeight.toFixed(2)}px, 下边距=${paraInfo.marginBottom.toFixed(2)}px, 当前页累计=${currentPageHeight.toFixed(2)}px, 页面${pageIndex + 1}限制=${maxHeight.toFixed(2)}px`);
+                
+                // 判断是否需要换页
+                if (currentPage.length > 0) {
+                    // 尝试1: 加上完整高度（内容+下边距）
+                    const heightWithMargin = currentPageHeight + paraInfo.contentHeight + paraInfo.marginBottom;
+                    
+                    if (heightWithMargin <= maxHeight) {
+                        // 可以放入，包含下边距
+                        currentPage.push({ text: para, index: i, hasMargin: true });
+                        currentPageHeight = heightWithMargin;
+                        console.log(`→ 段落添加到页面${pageIndex + 1}（含下边距），新累计=${currentPageHeight.toFixed(2)}px`);
+                    } else {
+                        // 尝试2: 只加内容高度（不含下边距），作为页面最后一段
+                        const heightWithoutMargin = currentPageHeight + paraInfo.contentHeight;
+                        
+                        if (heightWithoutMargin <= maxHeight) {
+                            // 可以放入，但作为最后一段，不含下边距
+                            currentPage.push({ text: para, index: i, hasMargin: false });
+                            currentPageHeight = heightWithoutMargin;
+                            console.log(`→ 段落添加到页面${pageIndex + 1}（不含下边距，作为最后段），累计=${currentPageHeight.toFixed(2)}px`);
+                        } else {
+                            // 完全放不下，需要换页
+                            console.log(`→ 换页！页面${pageIndex + 1}完成，包含${currentPage.length}个段落，总高度=${currentPageHeight.toFixed(2)}px`);
+                            pages.push({
+                                paragraphs: currentPage.map(p => p.text),
+                                height: currentPageHeight
+                            });
+                            
+                            // 开始新页
+                            currentPage = [{ text: para, index: i, hasMargin: true }];
+                            currentPageHeight = paraInfo.contentHeight + paraInfo.marginBottom;
+                            pageIndex++;
+                            console.log(`→ 开始页面${pageIndex + 1}`);
+                        }
+                    }
+                } else {
+                    // 第一个段落，直接添加
+                    currentPage.push({ text: para, index: i, hasMargin: true });
+                    currentPageHeight = paraInfo.contentHeight + paraInfo.marginBottom;
+                    console.log(`→ 段落添加到页面${pageIndex + 1}（首段），累计=${currentPageHeight.toFixed(2)}px`);
+                }
+            }
+            
+            // 添加最后一页
+            if (currentPage.length > 0) {
+                console.log(`\n页面${pageIndex + 1}完成（最后页），包含${currentPage.length}个段落，总高度=${currentPageHeight.toFixed(2)}px`);
+                pages.push({
+                    paragraphs: currentPage.map(p => p.text),
+                    height: currentPageHeight
+                });
+            }
+            
+            console.log(`\n===== 初步分页完成，共${pages.length}页 =====`);
+            
+            // 检查最后一页的高度是否超过限制
+            if (pages.length > 0) {
+                const lastPageMaxHeight = LAST_PAGE_HEIGHT_MM * MM_TO_PX;
+                const lastPage = pages[pages.length - 1];
+                
+                console.log(`\n检查最后页高度: ${lastPage.height.toFixed(2)}px, 限制: ${lastPageMaxHeight.toFixed(2)}px`);
+                
+                if (lastPage.height > lastPageMaxHeight) {
+                    console.log(`最后页超出限制，需要重新分配段落`);
+                    
+                    // 获取最后一页的段落
+                    const lastPageParagraphs = lastPage.paragraphs;
+                    const lastPageStartIndex = paragraphs.length - lastPageParagraphs.length;
+                    
+                    // 移除最后一页，重新分配
+                    pages.pop();
+                    
+                    // 重新分配最后一页的段落
+                    let newLastPage = [];
+                    let newLastPageHeight = 0;
+                    
+                    for (let i = 0; i < lastPageParagraphs.length; i++) {
+                        const para = lastPageParagraphs[i];
+                        const paraInfo = paragraphHeights[lastPageStartIndex + i];
+                        
+                        // 尝试添加到新的最后一页
+                        const heightWithMargin = newLastPageHeight + paraInfo.contentHeight + paraInfo.marginBottom;
+                        const heightWithoutMargin = newLastPageHeight + paraInfo.contentHeight;
+                        
+                        if (heightWithMargin <= lastPageMaxHeight) {
+                            newLastPage.push(para);
+                            newLastPageHeight = heightWithMargin;
+                        } else if (heightWithoutMargin <= lastPageMaxHeight) {
+                            newLastPage.push(para);
+                            newLastPageHeight = heightWithoutMargin;
+                        } else {
+                            // 当前段落放不下，需要新开一页
+                            // 将已有段落作为倒数第二页
+                            if (newLastPage.length > 0) {
+                                pages.push({
+                                    paragraphs: newLastPage,
+                                    height: newLastPageHeight
+                                });
+                                console.log(`  添加倒数第二页: ${newLastPage.length}段, 高度${newLastPageHeight.toFixed(2)}px`);
+                            }
+                            
+                            // 开始新的最后一页
+                            newLastPage = [para];
+                            newLastPageHeight = paraInfo.contentHeight + paraInfo.marginBottom;
+                        }
+                    }
+                    
+                    // 添加最终的最后一页
+                    if (newLastPage.length > 0) {
+                        pages.push({
+                            paragraphs: newLastPage,
+                            height: newLastPageHeight
+                        });
+                        console.log(`  最终最后页: ${newLastPage.length}段, 高度${newLastPageHeight.toFixed(2)}px`);
+                    }
+                }
+            }
+            
+            console.log(`\n===== 分页完成，共${pages.length}页 =====\n`);
+            
+            // 返回段落数组格式
+            return pages.map(page => page.paragraphs);
+        }
+
+        function runTest() {
+            const startTime = performance.now();
+            
+            // 获取源内容
+            const sourceDiv = document.getElementById('sourceContent');
+            const title = sourceDiv.querySelector('h1').textContent;
+            const chapter = sourceDiv.querySelector('h3').textContent;
+            const paragraphs = Array.from(sourceDiv.querySelectorAll('p'))
+                .map(p => p.textContent.trim())
+                .filter(text => text.length > 0);
+            
+            console.log(`总段落数: ${paragraphs.length}`);
+            
+            // 分页
+            const pages = splitContentIntoPages(paragraphs);
+            
+            // 生成HTML
+            const today = new Date();
+            const dateStr = `${today.getFullYear()}年${today.getMonth() + 1}月${today.getDate()}日`;
+            
+            let html = '<div class="document-container">';
+            
+            // 第一页
+            html += `
+                <div class="page ${showRuler ? 'with-ruler' : ''}">
+                    <div class="header">
+                        <div class="header-title">XX省网络文学管理委员会</div>
+                        <div class="header-line"></div>
+                    </div>
+                    <div class="document-number">X网文〔2026〕1号</div>
+                    <div class="title">${chapter}</div>
+                    <div class="content">
+            `;
+            
+            if (pages.length > 0) {
+                for (let para of pages[0]) {
+                    html += `<p>${para}</p>`;
+                }
+            }
+            
+            html += `<div class="page-number">—1—</div></div></div>`;
+            
+            // 后续页面
+            for (let i = 1; i < pages.length; i++) {
+                const isLastPage = i === pages.length - 1;
+                
+                html += `<div class="page ${showRuler ? 'with-ruler' : ''}"><div class="content">`;
+                
+                for (let para of pages[i]) {
+                    html += `<p>${para}</p>`;
+                }
+                
+                if (isLastPage) {
+                    html += `</div>
+                        <div class="signature">
+                            <div class="signature-unit">XX省网络文学管理委员会</div>
+                            <div class="signature-date">${dateStr}</div>
+                        </div>
+                        <div class="page-number">—${i + 1}—</div>
+                    </div>`;
+                } else {
+                    html += `<div class="page-number">—${i + 1}—</div></div></div>`;
+                }
+            }
+            
+            html += '</div>';
+            
+            document.getElementById('result').innerHTML = html;
+            
+            const endTime = performance.now();
+            const duration = (endTime - startTime).toFixed(2);
+            
+            // 显示统计信息
+            document.getElementById('stats').innerHTML = `
+                <strong>✅ 测试完成</strong><br>
+                总段落数: ${paragraphs.length}<br>
+                生成页数: ${pages.length}<br>
+                处理时间: ${duration}ms<br>
+                第一页段落数: ${pages[0] ? pages[0].length : 0}<br>
+                ${pages.map((p, i) => `第${i+1}页: ${p.length}段`).join(' | ')}
+            `;
+            
+            console.log(`测试完成，生成${pages.length}页，耗时${duration}ms`);
+        }
+
+        function toggleRuler() {
+            showRuler = !showRuler;
+            const pages = document.querySelectorAll('.page');
+            pages.forEach(page => {
+                if (showRuler) {
+                    page.classList.add('with-ruler');
+                } else {
+                    page.classList.remove('with-ruler');
+                }
+            });
+        }
+    </script>
+</body>
+</html>

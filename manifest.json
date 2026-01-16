@@ -1,0 +1,31 @@
+{
+  "manifest_version": 3,
+  "name": "网文公文化",
+  "version": "1.0.0",
+  "description": "将小说网站的内容转换为政府公文格式显示",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage"
+  ],
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.qidian.com/*",
+        "*://*.zongheng.com/*",
+        "*://*.17k.com/*",
+        "*://*.jjwxc.net/*",
+        "*://*.xxsy.net/*",
+        "*://*.sfacg.com/*",
+        "*://*.ciweimao.com/*",
+        "*://*.readnovel.com/*",
+        "file:///*"
+      ],
+      "js": ["content.js"],
+      "css": ["official-style.css"]
+    }
+  ]
+}
